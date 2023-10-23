@@ -5,16 +5,8 @@ from django.http.response import JsonResponse, StreamingHttpResponse
 from django.http.request import HttpRequest
 from api.completion import completion
 
-# Create your views here.
-
-
-def hello(request: HttpRequest):
-    return render(request=request, template_name='index.html')
-    # return HttpResponse(status=200, content='hello')
-
 
 def generate(request: HttpRequest): 
-    print(request.GET)
     question = request.GET.get('question')
     if not question:
         return JsonResponse(status=400)

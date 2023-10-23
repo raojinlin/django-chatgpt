@@ -37,6 +37,7 @@
                 padding-left: 0;
                 max-height: calc(100vh - 250px);
                 overflow: auto;
+                min-height: 200px;
             } 
 
             li.role-assistant {
@@ -55,6 +56,11 @@
                 padding: 5px 25px;
                 border-radius: 15px;
                 width: 90%;
+                font-size: 20px;
+            }
+
+            span.error {
+                color: red;
             }
         </style>
     </head>
@@ -86,6 +92,10 @@
             return ele.scrollTo(0, ele.scrollHeight);
         };
 
+        const setError = ele => {
+            ele.innerHTML = '<span class="error">Network Error</span>';
+        };
+
         input.onkeydown =  (e) => {
             if (e.keyCode !== 13) {
                 return
@@ -94,17 +104,22 @@
             const content = e.target.value;
             e.target.value = '';
 
-            const isStream = document.querySelector('#stream').checked;
             messageList.append(newMessageEle(content));
+
             const assistantEl = newMessageEle('Answering...', 'assistant');
             messageList.append(assistantEl);
+
+            const isStream = document.querySelector('#stream').checked;
             if (!isStream) {
                 fetch(`/api/generate?question=${encodeURIComponent(content)}`).then(r => r.json()).then(resp => {
                     assistantEl.innerHTML = toHTML(resp.choices[0].message.content);
                     scrollToBottom(messageList);
+                }).catch(() => {
+                    setError(assistantEl);
                 });
             } else {
                 const eventSource = new EventSource(`/api/generate/stream?question=${encodeURIComponent(content)}`);
+
                 let firstMsg = true;
                 eventSource.onmessage = e => {
                     const resp = JSON.parse(e.data);
@@ -121,8 +136,11 @@
                     if (resp.choices[0].finish_reason) {
                         eventSource.close();
                     }
+                };
 
-                }
+                eventSource.onerror = e => {
+                    setError(assistantEl);
+                };
             }
         };
     </script>
