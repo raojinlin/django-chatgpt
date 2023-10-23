@@ -12,6 +12,7 @@
 ```bash
 $ python3.11 -m venv ./venv
 $ . ./venv/bin/activate
+$ pip3 install -r requirements.txt
 ```
 
 运行程序
