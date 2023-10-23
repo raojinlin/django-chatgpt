@@ -2,6 +2,7 @@
 
 使用Django框架与ChatGPT通话。
 
+![](./images/demo.gif)
 
 
 ### 运行
