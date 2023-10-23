@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf8">
+        <title>Django ChatGPT Service</title>
+        <style>
+            body {
+                margin: 0;
+                font-size: 14px;
+            }
+
+            header {
+                text-align: center;
+                font-size: 28px;
+                font-weight: bold;
+                border-bottom: 1px solid #d9d9e3;
+                padding: 15px 0;
+            }
+
+            ul#messages li {
+                border-bottom: 1px solid #ccc;
+                padding: 20px 15px;
+                list-style: none;
+            }
+
+            li.role-user::before {
+                content: 'You: ';
+                font-weight: bold;
+            }
+
+            li.role-assistant::before {
+                content: 'ChatGPT: ';
+                font-weight: bold;
+            }
+
+            ul#messages {
+                padding-left: 0;
+                max-height: calc(100vh - 250px);
+                overflow: auto;
+            } 
+
+            li.role-assistant {
+                background: rgba(247,247,248,1);
+            }
+
+            .userInput {
+                text-align: center;
+            }
+
+            .userInput input {
+                max-height: 200px;
+                height: 44px;
+                box-shadow: 0 0 15px rgba(0,0,0,.1);
+                border: 1px solid #ccc;
+                padding: 5px 25px;
+                border-radius: 15px;
+                width: 90%;
+            }
+        </style>
+    </head>
+    <body>
+        <header>ChatGPT <label for="stream" style="font-size: 14px;"><input id="stream" type="checkbox" /> 流式响应</label></header>
+        <ul id="messages">
+
+        </ul>
+        <div class="userInput">
+            <input placeholder="Send a message" type="text" />
+        </div>
+    </body>
+    <script type="text/javascript">
+        const input = document.querySelector('.userInput input');
+        const messageList = document.querySelector('#messages');
+
+        const newMessageEle = (content, role='user') => {
+            const ele = document.createElement('li');
+            ele.textContent = content;
+            ele.classList.add(`role-${role}`);
+            return ele;
+        }
+
+        const toHTML = content => {
+            return content.replace(/\n/g, '<br>');
+        };
+
+        const scrollToBottom = ele => {
+            return ele.scrollTo(0, ele.scrollHeight);
+        };
+
+        input.onkeydown =  (e) => {
+            if (e.keyCode !== 13) {
+                return
+            }
+
+            const content = e.target.value;
+            e.target.value = '';
+
+            const isStream = document.querySelector('#stream').checked;
+            messageList.append(newMessageEle(content));
+            const assistantEl = newMessageEle('Answering...', 'assistant');
+            messageList.append(assistantEl);
+            if (!isStream) {
+                fetch(`/api/generate?question=${encodeURIComponent(content)}`).then(r => r.json()).then(resp => {
+                    assistantEl.innerHTML = toHTML(resp.choices[0].message.content);
+                    scrollToBottom(messageList);
+                });
+            } else {
+                const eventSource = new EventSource(`/api/generate/stream?question=${encodeURIComponent(content)}`);
+                let firstMsg = true;
+                eventSource.onmessage = e => {
+                    const resp = JSON.parse(e.data);
+                    if (firstMsg) {
+                        assistantEl.innerHTML = resp.choices[0].delta.content || '';
+                        firstMsg = false;
+                    } else {
+                        assistantEl.innerHTML += resp.choices[0].delta.content || '';
+                    }
+
+                    assistantEl.innerHTML = toHTML(assistantEl.innerHTML);
+                    scrollToBottom(messageList);
+
+                    if (resp.choices[0].finish_reason) {
+                        eventSource.close();
+                    }
+
+                }
+            }
+        };
+    </script>
+</html>
